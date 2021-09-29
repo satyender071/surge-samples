@@ -9,18 +9,18 @@ import com.example.account.BankAccount
 import com.example.http.request.CreateAccountRequest
 import com.example.http.serializer.BankAccountRequestSerializer
 import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
-import org.slf4j.LoggerFactory
+import org.slf4j.{LoggerFactory, MDC}
 import surge.scaladsl.common.{CommandFailure, CommandSuccess}
 import com.example.http.request.RequestToCommand._
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.Future
 import scala.io.StdIn
+import surge.internal.utils.MdcExecutionContext.mdcExecutionContext
 
 object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
 
   implicit val system = BankAccountEngine.surgeEngine.actorSystem
-  implicit val executionContext = system.dispatcher
   private val log = LoggerFactory.getLogger(getClass)
   private val config = ConfigFactory.load()
 
@@ -31,6 +31,7 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
           post {
             entity(as[CreateAccountRequest]) { request =>
               val createAccountCommand = requestToCommand(request)
+              MDC.put("account request", createAccountCommand.accountNumber.toString)
               val createdAccountF: Future[Option[BankAccount]] = BankAccountEngine.surgeEngine.aggregateFor(createAccountCommand.accountNumber).sendCommand(createAccountCommand).map {
                 case CommandSuccess(aggregateState) => aggregateState
                 case CommandFailure(reason)         => throw reason
@@ -45,7 +46,9 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
         },
         path(JavaUUID) { uuid =>
           get {
+            MDC.put("get Account State", uuid.toString)
             val accountStateF = BankAccountEngine.surgeEngine.aggregateFor(uuid).getState
+            log.info("Get account owner's state ")
             onSuccess(accountStateF) {
               case Some(accountState) => complete(accountState)
               case None => complete(StatusCodes.NotFound)
