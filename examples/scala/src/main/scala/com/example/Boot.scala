@@ -31,7 +31,7 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
           post {
             entity(as[CreateAccountRequest]) { request =>
               val createAccountCommand = requestToCommand(request)
-              MDC.put("account request", createAccountCommand.accountNumber.toString)
+              MDC.put("account_number", createAccountCommand.accountNumber.toString)
               val createdAccountF: Future[Option[BankAccount]] = BankAccountEngine.surgeEngine.aggregateFor(createAccountCommand.accountNumber).sendCommand(createAccountCommand).map {
                 case CommandSuccess(aggregateState) => aggregateState
                 case CommandFailure(reason)         => throw reason
@@ -46,7 +46,7 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
         },
         path(JavaUUID) { uuid =>
           get {
-            MDC.put("get Account State", uuid.toString)
+            MDC.put("account_number", uuid.toString)
             val accountStateF = BankAccountEngine.surgeEngine.aggregateFor(uuid).getState
             log.info("Get account owner's state ")
             onSuccess(accountStateF) {
