@@ -63,10 +63,6 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
   val port = config.getInt("http.port")
   val bindingFuture = Http().newServerAt(host, port).bind(route)
 
-  log.info(s"Server is running on http://$host:$port/\nPress RETURN to stop...")
-  StdIn.readLine() // let it run until user presses return
-  bindingFuture
-    .flatMap(_.unbind()) // trigger unbinding from the port
-    .onComplete(_ => system.terminate()) // and shutdown when done
+  log.info(s"Server is running on http://$host:$port")
 
 }
