@@ -23,7 +23,7 @@ spec:
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: bank-account-scala
