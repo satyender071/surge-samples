@@ -44,6 +44,12 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
             }
           }
         },
+        path("credit" / JavaUUID){
+
+        },
+        path("debit" / JavaUUID){
+
+        },
         path(JavaUUID) { uuid =>
           get {
             MDC.put("account_number", uuid.toString)
