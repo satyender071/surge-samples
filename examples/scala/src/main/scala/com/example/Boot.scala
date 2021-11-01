@@ -57,7 +57,7 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
                 case Success(commandResult) =>
                   commandResult match {
                     case CommandSuccess(aggregateState) => complete(aggregateState)
-                    case CommandFailure(reason) => complete(StatusCodes.BadRequest, Map("message:" -> reason.getMessage))
+                    case CommandFailure(reason) => complete(StatusCodes.BadRequest, Map("message" -> reason.getMessage))
                   }
                 case Failure(_) => complete(StatusCodes.InternalServerError)
               }
@@ -75,7 +75,7 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
                 case Success(commandResult) =>
                   commandResult match {
                     case CommandSuccess(aggregateState) => complete(aggregateState)
-                    case CommandFailure(reason) => complete(StatusCodes.BadRequest, Map("message:" -> reason.getMessage))
+                    case CommandFailure(reason) => complete(StatusCodes.BadRequest, Map("message" -> reason.getMessage))
                   }
                 case Failure(_) => complete(StatusCodes.InternalServerError)
               }
