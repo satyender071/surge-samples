@@ -6,14 +6,14 @@ import com.example.command.{CreateAccount, CreditAccount, DebitAccount}
 
 import java.util.UUID
 
-case class CreateAccountRequest(accountNumber:UUID, accountOwner: String, securityCode: String, initialBalance: Double)
+case class CreateAccountRequest(accountOwner: String, securityCode: String, initialBalance: Double)
 case class CreditAccountRequest(accountNumber: UUID, amount: Double)
 case class DebitAccountRequest(accountNumber: UUID, amount: Double)
 
 object RequestToCommand {
   def requestToCommand(request: CreateAccountRequest): CreateAccount = {
-
-    CreateAccount(request.accountNumber,request.accountOwner, request.securityCode, request.initialBalance)
+    val newAccountNumber = UUID.randomUUID()
+    CreateAccount(newAccountNumber,request.accountOwner, request.securityCode, request.initialBalance)
   }
 
   def requestToCommand(request: CreditAccountRequest): CreditAccount = {

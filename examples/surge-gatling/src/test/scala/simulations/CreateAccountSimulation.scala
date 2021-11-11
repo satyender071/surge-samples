@@ -16,9 +16,9 @@ class CreateAccountSimulation extends Simulation {
     .header("content-Type", "application/json")
 
 
-  private def createRequestBody(initialBalance: Int, accountNumber: UUID): String = {
+  private def createRequestBody(initialBalance: Int): String = {
     s"""{
-       |    "accountNumber": "$accountNumber",
+       |    "accountNumber": "${UUID.randomUUID()}",
        |    "accountOwner": "Jane Doe",
        |     "securityCode": "12345678910",
        |     "initialBalance": $initialBalance
@@ -28,16 +28,18 @@ class CreateAccountSimulation extends Simulation {
   val scn: ScenarioBuilder = scenario("create user account")
     .exec(http("create account request")
       .post("/bank-accounts/create")
-      .body(StringBody(createRequestBody(1000, UUID.randomUUID())))
-      .check(status is (200),
+      .body(StringBody(createRequestBody(1000)))
+      .check(
         jsonPath("$.accountNumber")
-          .saveAs("aggregateId")))
+          .saveAs("aggregateId"))
+    )
     .exec(session => {
       println("User account response")
       println(session("aggregateId").as[String])
       session
-    }).pause(500 microsecond)
-    .exec(http("Get Bank account state")
+    })
+      .pause(500 microsecond)
+.exec(http("Get Bank account state")
       .get("/bank-accounts/${aggregateId}")
       .check(status.is(200), bodyString.saveAs("balance"))).exec(session => {
     println("Account Balance:")
@@ -45,6 +47,6 @@ class CreateAccountSimulation extends Simulation {
     session
   })
 
-  setUp(scn.inject(atOnceUsers(1),rampUsers(5).during(5.seconds)).protocols(httpProtocol))
+  setUp(scn.inject(atOnceUsers(1),rampUsers(15).during(60.seconds)).protocols(httpProtocol))
 
 }
