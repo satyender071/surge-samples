@@ -6,17 +6,19 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import com.example.account.BankAccount
-import com.example.http.request.CreateAccountRequest
+import com.example.http.request.{CreateAccountRequest, CreditAccountRequest, DebitAccountRequest}
 import com.example.http.serializer.BankAccountRequestSerializer
 import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import org.slf4j.{LoggerFactory, MDC}
-import surge.scaladsl.common.{CommandFailure, CommandSuccess}
+import surge.scaladsl.common.{CommandFailure, CommandResult, CommandSuccess}
 import com.example.http.request.RequestToCommand._
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.Future
 import scala.io.StdIn
 import surge.internal.utils.MdcExecutionContext.mdcExecutionContext
+
+import scala.util.{Failure, Success}
 
 object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
 
@@ -32,14 +34,51 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
             entity(as[CreateAccountRequest]) { request =>
               val createAccountCommand = requestToCommand(request)
               MDC.put("account_number", createAccountCommand.accountNumber.toString)
-              val createdAccountF: Future[Option[BankAccount]] = BankAccountEngine.surgeEngine.aggregateFor(createAccountCommand.accountNumber).sendCommand(createAccountCommand).map {
-                case CommandSuccess(aggregateState) => aggregateState
-                case CommandFailure(reason)         => throw reason
-              }
+              val createdAccountF: Future[CommandResult[BankAccount]] = BankAccountEngine.surgeEngine.aggregateFor(createAccountCommand.accountNumber).sendCommand(createAccountCommand)
 
-              onSuccess(createdAccountF) {
-                case Some(account) => complete(account)
-                case None => complete(StatusCodes.InternalServerError)
+              onComplete(createdAccountF) {
+                case Success(commandResult) =>
+                  commandResult match {
+                    case CommandSuccess(aggregateState) => complete(aggregateState)
+                    case CommandFailure(reason) => complete(StatusCodes.BadRequest, Map("message" -> reason.getMessage))
+                  }
+                case Failure(_) => complete(StatusCodes.InternalServerError)
+              }
+            }
+          }
+        },
+        path("credit") {
+          patch {
+            entity(as[CreditAccountRequest]) { request =>
+              val creditAccountCommand = requestToCommand(request)
+              MDC.put("account_number", creditAccountCommand.accountNumber.toString)
+              val creditAccountF: Future[CommandResult[BankAccount]] = BankAccountEngine.surgeEngine.aggregateFor(creditAccountCommand.accountNumber).sendCommand(creditAccountCommand)
+
+              onComplete(creditAccountF) {
+                case Success(commandResult) =>
+                  commandResult match {
+                    case CommandSuccess(aggregateState) => complete(aggregateState)
+                    case CommandFailure(reason) => complete(StatusCodes.BadRequest, Map("message" -> reason.getMessage))
+                  }
+                case Failure(_) => complete(StatusCodes.InternalServerError)
+              }
+            }
+          }
+        },
+        path("debit") {
+          patch {
+            entity(as[DebitAccountRequest]) { request =>
+              val debitAccountCommand = requestToCommand(request)
+              MDC.put("account_number", debitAccountCommand.accountNumber.toString)
+              val debitAccountF: Future[CommandResult[BankAccount]] = BankAccountEngine.surgeEngine.aggregateFor(debitAccountCommand.accountNumber).sendCommand(debitAccountCommand)
+
+              onComplete(debitAccountF) {
+                case Success(commandResult) =>
+                  commandResult match {
+                    case CommandSuccess(aggregateState) => complete(aggregateState)
+                    case CommandFailure(reason) => complete(StatusCodes.BadRequest, Map("message" -> reason.getMessage))
+                  }
+                case Failure(_) => complete(StatusCodes.InternalServerError)
               }
             }
           }
@@ -50,7 +89,7 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
             val accountStateF = BankAccountEngine.surgeEngine.aggregateFor(uuid).getState
             log.info("Get account owner's state ")
             onSuccess(accountStateF) {
-              case Some(accountState) => complete(accountState.balance)
+              case Some(accountState) => complete(accountState)
               case None => complete(StatusCodes.NotFound)
             }
           }
@@ -58,11 +97,9 @@ object Boot extends App with PlayJsonSupport with BankAccountRequestSerializer {
       )
     }
 
-
   val host = config.getString("http.host")
   val port = config.getInt("http.port")
   val bindingFuture = Http().newServerAt(host, port).bind(route)
 
   log.info(s"Server is running on  http://$host:$port")
-
 }
