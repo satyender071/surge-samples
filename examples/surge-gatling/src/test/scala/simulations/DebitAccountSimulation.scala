@@ -1,15 +1,20 @@
 package simulations
 
 import io.gatling.core.Predef._
-import io.gatling.core.structure.ScenarioBuilder
+import io.gatling.core.structure.{ChainBuilder, ScenarioBuilder}
 import io.gatling.http.Predef._
 import io.gatling.http.protocol.HttpProtocolBuilder
+import org.slf4j.LoggerFactory
 
 import java.util.UUID
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
+import scala.util.Random
 
 class DebitAccountSimulation extends Simulation {
+
+  private val log = LoggerFactory.getLogger(getClass)
+
   val scalaAppUrl: String = System.getenv("SCALA_APP_URL")
   val httpProtocol: HttpProtocolBuilder = http
     .baseUrl(scalaAppUrl)
@@ -33,6 +38,18 @@ class DebitAccountSimulation extends Simulation {
        |}""".stripMargin
   }
 
+  val debitChain: ChainBuilder = exec(
+    http("Debit Account Request")
+      .put("/bank-accounts/debit/${aggregateId}")
+      .body(StringBody(debitRequestBody(100)))
+      .check(status.is(200), bodyString.saveAs("balance"))
+  )
+    .exec(session => {
+      log.info("Account Balance after debit:")
+      log.info(session("balance").as[String])
+      session
+    })
+
   val scn: ScenarioBuilder = scenario("create user account")
     .exec(
       http("create account request")
@@ -45,26 +62,16 @@ class DebitAccountSimulation extends Simulation {
         )
     )
     .exec(session => {
-      println("User account response")
-      println(session("aggregateId").as[String])
+      log.info("User account response")
+      log.info(session("aggregateId").as[String])
       session
     })
     .pause(500 microsecond)
-    .exec(
-      http("Debit Account Request")
-        .put("/bank-accounts/debit/${aggregateId}")
-        .body(StringBody(debitRequestBody(100)))
-        .check(status.is(200), bodyString.saveAs("balance"))
-    )
-    .exec(session => {
-      println("Account Balance after debit:")
-      println(session("balance").as[String])
-      session
-    })
+    .repeat(Random.between(1, 10))(debitChain)
 
   setUp(
     scn
-      .inject(atOnceUsers(1), rampUsers(5).during(5.seconds))
+      .inject(atOnceUsers(1))
       .protocols(httpProtocol)
   )
 

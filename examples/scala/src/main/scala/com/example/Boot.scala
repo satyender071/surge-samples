@@ -19,9 +19,6 @@ import com.example.http.request.RequestToCommand._
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.Future
-import scala.io.StdIn
-import surge.internal.utils.MdcExecutionContext.mdcExecutionContext
-
 import java.util.UUID
 import scala.util.{Failure, Success}
 

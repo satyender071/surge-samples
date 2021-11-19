@@ -17,3 +17,7 @@ secrets/
 .scannerwork/
 .bsp
 .java-version
+.metals
+.bloop
+metals.sbt
+.vscode
