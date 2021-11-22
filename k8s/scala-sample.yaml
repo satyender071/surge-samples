@@ -29,6 +29,7 @@ spec:
       app: bank-account-scala
   template:
     metadata:
+      name: bank-account-scala
       labels:
         app: bank-account-scala
     spec:
